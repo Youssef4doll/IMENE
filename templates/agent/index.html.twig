@@ -1,0 +1,273 @@
+{% extends 'base_back.html.twig' %}
+
+{% block title %}Gestion des Agents{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        /* --- Page Layout --- */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        /* --- Control Panel (Search/Sort) --- */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* --- Agent Card (Dark Mode) --- */
+        .agent-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-left: 4px solid #ff2d2d; /* RED Accent for Agents */
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 45, 45, 0.3);
+        }
+
+        /* --- Badges & Status --- */
+        .badge-custom {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        /* Specific Status Colors */
+        .status-active { border-left-color: #2dff8b !important; }
+        .status-inactive { border-left-color: #ffb800 !important; }
+        .status-banned { border-left-color: #ff2d2d !important; }
+
+        /* --- Inputs & Buttons Overrides --- */
+        .form-control, .input-group-text {
+            background: rgba(0, 0, 0, 0.2) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+        }
+
+        .btn-sort {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-sort:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .btn-sort.active {
+            background: #ff2d2d; /* Red active state */
+            color: white;
+            border-color: #ff2d2d;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+
+    {# 1. HEADER #}
+    <div class="page-header">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Agents</h1>
+            <p class="text-muted mb-0">Gestion des agents du back-office</p>
+        </div>
+        <a href="{{ path('app_agent_new') }}" class="btn btn-admin btn-admin-primary" style="background: #ff2d2d; color: white;">
+            <i class="fas fa-plus me-2"></i> Créer un Agent
+        </a>
+    </div>
+
+    {# 2. CONTROL PANEL #}
+    <div class="control-panel">
+        <div class="row g-3 align-items-center">
+            
+            {# Search #}
+            <div class="col-md-6">
+                {# ✅ MODIFICATION 1: Added ID to form #}
+                <form id="searchForm" method="get" class="d-flex gap-2">
+                    <input type="hidden" name="sort" value="{{ sort }}">
+                    <input type="hidden" name="dir" value="{{ dir }}">
+
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        {# ✅ MODIFICATION 2: Added ID and autocomplete #}
+                        <input type="text" name="q" id="searchInput" class="form-control" placeholder="Rechercher (Pseudo, Jeu...)" value="{{ q }}" autocomplete="off">
+                        <button class="btn btn-outline-light" type="submit">Go</button>
+                    </div>
+
+                    {% if q %}
+                        <a href="{{ path('app_agent_index') }}" class="btn btn-outline-secondary" title="Reset">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    {% endif %}
+                </form>
+            </div>
+
+            {# Sort #}
+            <div class="col-md-6 text-md-end">
+                <span class="text-muted small fw-bold me-2 text-uppercase">Trier :</span>
+                
+                {% set currentDir = (dir == 'ASC') ? 'up' : 'down' %}
+                
+                {# Pseudo #}
+                <a href="{{ path('app_agent_index', { q: q, sort: 'pseudo', dir: (sort == 'pseudo' and dir == 'ASC') ? 'DESC' : 'ASC' }) }}" 
+                   class="btn-sort {{ sort == 'pseudo' ? 'active' : '' }}">
+                   Pseudo {% if sort == 'pseudo' %}<i class="fas fa-caret-{{ currentDir }}"></i>{% endif %}
+                </a>
+
+                {# Game #}
+                <a href="{{ path('app_agent_index', { q: q, sort: 'game', dir: (sort == 'game' and dir == 'ASC') ? 'DESC' : 'ASC' }) }}" 
+                   class="btn-sort {{ sort == 'game' ? 'active' : '' }}">
+                   Jeu {% if sort == 'game' %}<i class="fas fa-caret-{{ currentDir }}"></i>{% endif %}
+                </a>
+
+                {# Status #}
+                <a href="{{ path('app_agent_index', { q: q, sort: 'status', dir: (sort == 'status' and dir == 'ASC') ? 'DESC' : 'ASC' }) }}" 
+                   class="btn-sort {{ sort == 'status' ? 'active' : '' }}">
+                   Statut {% if sort == 'status' %}<i class="fas fa-caret-{{ currentDir }}"></i>{% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {# 3. ALERTS #}
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label == 'error' ? 'danger' : label }} mb-4" style="background: rgba(255,255,255,0.1); border:none; color:white;">
+                <i class="fas fa-info-circle me-2"></i> {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    {# 4. LIST #}
+    {% if agents is empty %}
+        <div class="text-center py-5 text-muted">
+            <i class="fas fa-folder-open fa-3x mb-3"></i>
+            <h4>Aucun agent trouvé.</h4>
+            <p>Essayez de modifier votre recherche.</p>
+        </div>
+    {% else %}
+        <div class="agent-list">
+            {% for agent in agents %}
+                
+                {# Determine status class for the colored border #}
+                {% set statusClass = 'status-banned' %}
+                {% if agent.status == 'active' %}{% set statusClass = 'status-active' %}
+                {% elseif agent.status == 'inactive' %}{% set statusClass = 'status-inactive' %}
+                {% endif %}
+
+                <div class="agent-card {{ statusClass }}">
+                    
+                    {# LEFT: Info #}
+                    <div style="flex: 1; min-width: 280px;">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <h5 class="mb-0 fw-bold text-white">{{ agent.pseudo }}</h5>
+                            <span class="badge" style="background: rgba(255,255,255,0.1);">{{ agent.game }}</span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            {# Status Badge #}
+                            <span class="badge badge-custom 
+                                {% if agent.status == 'active' %} bg-success text-white
+                                {% elseif agent.status == 'inactive' %} bg-warning text-dark
+                                {% else %} bg-danger text-white
+                                {% endif %}">
+                                {{ agent.status|capitalize }}
+                            </span>
+
+                            <small class="text-muted">
+                                <i class="fas fa-ranking-star"></i> {{ agent.rank }}
+                            </small>
+                        </div>
+                        
+                        <div class="small text-muted">
+                            {% if agent.socialsLink %}
+                                <a href="{{ agent.socialsLink }}" target="_blank" class="text-decoration-none" style="color: #4d7cff;">
+                                    <i class="fab fa-discord"></i> Lien Social
+                                </a>
+                            {% else %}
+                                <span><i class="fas fa-ban"></i> Pas de lien</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# RIGHT: Actions #}
+                    <div class="d-flex gap-2">
+                        <a href="{{ path('app_agent_show', {'id': agent.id}) }}" class="btn btn-sm btn-outline-light" title="Voir">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ path('app_agent_edit', {'id': agent.id}) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
+                            <i class="fas fa-pen"></i>
+                        </a>
+                        
+                        <form method="post" action="{{ path('app_agent_delete', {'id': agent.id}) }}" onsubmit="return confirm('Supprimer cet agent ?');" style="margin:0;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ agent.id) }}">
+                            <button class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+</div>
+
+{# ✅ MODIFICATION 3: Added Script for Dynamic Search #}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const searchForm = document.getElementById('searchForm');
+        let timeout = null;
+
+        if (searchInput && searchForm) {
+            // Restore focus (Keep cursor at end)
+            if (searchInput.value) {
+                searchInput.focus();
+                const len = searchInput.value.length;
+                searchInput.setSelectionRange(len, len);
+            }
+
+            // Listen for typing events
+            searchInput.addEventListener('input', function() {
+                // Clear the previous timeout (debounce)
+                clearTimeout(timeout);
+                
+                // Submit form after 500ms of inactivity
+                timeout = setTimeout(function() {
+                    searchForm.submit();
+                }, 500); 
+            });
+        }
+    });
+</script>
+{% endblock %}

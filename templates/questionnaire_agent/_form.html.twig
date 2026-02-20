@@ -1,0 +1,86 @@
+{# templates/questionnaire_agent/_form.html.twig #}
+
+<style>
+    /* Custom Form Styles for Admin Panel */
+    .admin-form-grid {
+        display: grid;
+        gap: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .form-group input, 
+    .form-group textarea, 
+    .form-group select {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+        padding: 12px 15px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus, 
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--admin-accent, #00f3ff) !important;
+        box-shadow: 0 0 0 3px rgba(0, 243, 255, 0.1);
+        background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .form-error {
+        color: #ff5e5e;
+        font-size: 0.85rem;
+        margin-top: 5px;
+    }
+</style>
+
+{{ form_start(form, { attr: { class: 'admin-form-grid', novalidate: 'novalidate' } }) }}
+
+    {# --- GAME FIELD --- #}
+    <div class="form-group">
+        {{ form_label(form.game, 'Jeu concerné') }}
+        {{ form_widget(form.game, { attr: { placeholder: 'Ex: Valorant, League of Legends...' } }) }}
+        <div class="form-error">{{ form_errors(form.game) }}</div>
+    </div>
+
+    <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 10px 0;"></div>
+
+    {# --- QUESTIONS 1 to 5 --- #}
+    {% for i in 1..5 %}
+        {% set fieldName = 'ques' ~ i %}
+        {% if attribute(form, fieldName) is defined %}
+            <div class="form-group">
+                {{ form_label(attribute(form, fieldName), 'Question ' ~ i) }}
+                {{ form_widget(attribute(form, fieldName), { attr: { placeholder: 'Posez votre question ici...' } }) }}
+                <div class="form-error">{{ form_errors(attribute(form, fieldName)) }}</div>
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    {# --- ACTION BUTTONS --- #}
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <a href="{{ path('app_questionnaire_agent_index') }}" class="btn btn-secondary" style="background: rgba(255,255,255,0.1); border:none; color: white;">
+            Annuler
+        </a>
+        <button type="submit" class="btn" style="
+            background: var(--admin-accent, #00f3ff); 
+            color: #000; 
+            font-weight: 800; 
+            padding: 10px 25px; 
+            border-radius: 8px; 
+            border: none;
+            box-shadow: 0 4px 15px rgba(0, 243, 255, 0.3);
+        ">
+            <i class="fas fa-save me-2"></i> {{ button_label|default('Enregistrer') }}
+        </button>
+    </div>
+
+{{ form_end(form) }}

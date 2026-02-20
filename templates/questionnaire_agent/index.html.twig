@@ -1,0 +1,335 @@
+{% extends 'base_back.html.twig' %}
+
+{% block title %}Gestion des Questionnaires{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        /* --- Page Layout --- */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        /* --- KPI STATS CARDS --- */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 140px; 
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .stat-card h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .stat-card .value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0;
+            line-height: 1;
+        }
+
+        .stat-card .icon-bg {
+            position: absolute;
+            right: -10px;
+            bottom: -10px;
+            font-size: 5rem;
+            opacity: 0.05;
+            color: white;
+            transform: rotate(-15deg);
+        }
+
+        /* Progress Bar for KPI */
+        .kpi-progress {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        
+        .kpi-progress-bar {
+            height: 100%;
+            background: var(--admin-accent, #00f3ff);
+            box-shadow: 0 0 10px var(--admin-accent, #00f3ff);
+            transition: width 1s ease-in-out;
+        }
+        
+        /* --- Control Panel (Search/Sort) --- */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* --- Questionnaire Card --- */
+        .quest-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--admin-accent, #00f3ff);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .quest-card:hover {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* --- Preview Box --- */
+        .preview-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            margin-top: 0.8rem;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+        
+        .preview-box i { color: var(--admin-accent, #00f3ff); }
+
+        /* --- Inputs & Buttons Overrides --- */
+        .form-control, .input-group-text {
+            background: rgba(0, 0, 0, 0.2) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+        }
+        
+        .btn-sort {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-sort:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .btn-sort.active {
+            background: var(--admin-accent, #00f3ff);
+            color: black;
+            border-color: var(--admin-accent, #00f3ff);
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+
+    {# 1. HEADER #}
+    <div class="page-header">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Questionnaires</h1>
+            <p class="text-muted mb-0">Gestion des questions par jeu</p>
+        </div>
+        <a href="{{ path('app_questionnaire_agent_new') }}" class="btn btn-admin btn-admin-primary">
+            <i class="fas fa-plus me-2"></i> Nouveau
+        </a>
+    </div>
+
+    {# --- 1.5 KPI STATS ROW --- #}
+    <div class="stats-row">
+        <div class="stat-card">
+            <i class="fas fa-users icon-bg"></i>
+            <h3>Total Agents</h3>
+            <div class="value">{{ total_agents|default(0) }}</div>
+        </div>
+
+        <div class="stat-card">
+            <i class="fas fa-file-signature icon-bg"></i>
+            <h3>Questionnaires Remplis</h3>
+            <div class="value">{{ total_responses|default(0) }}</div>
+        </div>
+
+        <div class="stat-card" style="border-color: var(--admin-accent, #00f3ff);">
+            <i class="fas fa-chart-pie icon-bg"></i>
+            <h3>Taux d'Engagement</h3>
+            
+            <div class="d-flex align-items-end gap-2">
+                <div class="value" style="color: var(--admin-accent, #00f3ff);">
+                    {{ completion_rate|default(0) }}%
+                </div>
+            </div>
+            
+            {# Visual Progress Bar #}
+            <div class="kpi-progress">
+                <div class="kpi-progress-bar" style="width: {{ completion_rate|default(0) }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    {# 2. CONTROL PANEL #}
+    <div class="control-panel">
+        <div class="row g-3 align-items-center">
+            
+            {# Search #}
+            <div class="col-md-6">
+                {# ✅ MODIFICATION 1: Added ID to form #}
+                <form id="searchForm" method="get" class="d-flex gap-2">
+                    <input type="hidden" name="sort" value="{{ sort|default('') }}">
+                    <input type="hidden" name="dir" value="{{ dir|default('') }}">
+
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        {# ✅ MODIFICATION 2: Added ID and autocomplete to input #}
+                        <input type="text" name="q" id="searchInput" class="form-control" placeholder="Rechercher..." value="{{ q|default('') }}" autocomplete="off">
+                        <button class="btn btn-outline-light" type="submit">Go</button>
+                    </div>
+
+                    {% if q|default('') %}
+                        <a href="{{ path('app_questionnaire_agent_index') }}" class="btn btn-outline-secondary" title="Reset">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    {% endif %}
+                </form>
+            </div>
+
+            {# Sort #}
+            <div class="col-md-6 text-md-end">
+                <span class="text-muted small fw-bold me-2 text-uppercase">Trier :</span>
+                
+                {% set currentDir = (dir|default('ASC') == 'ASC') ? 'up' : 'down' %}
+                
+                <a href="{{ path('app_questionnaire_agent_index', { q: q|default(''), sort: 'game', dir: (sort|default('game') == 'game' and dir|default('ASC') == 'ASC') ? 'DESC' : 'ASC' }) }}" 
+                   class="btn-sort {{ sort|default('') == 'game' ? 'active' : '' }}">
+                   Jeu {% if sort|default('') == 'game' %}<i class="fas fa-caret-{{ currentDir }}"></i>{% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {# 3. ALERTS #}
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label == 'error' ? 'danger' : label }} mb-4" style="background: rgba(255,255,255,0.1); border:none; color:white;">
+                <i class="fas fa-info-circle me-2"></i> {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    {# 4. LIST #}
+    {% if questionnaire_agents is empty %}
+        <div class="text-center py-5 text-muted">
+            <i class="fas fa-folder-open fa-3x mb-3"></i>
+            <h4>Aucun questionnaire trouvé.</h4>
+            <p>Essayez de modifier votre recherche.</p>
+        </div>
+    {% else %}
+        <div class="quest-list">
+            {% for qa in questionnaire_agents %}
+                <div class="quest-card">
+                    
+                    {# INFO #}
+                    <div style="flex: 1; min-width: 280px;">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <h5 class="mb-0 fw-bold text-white">{{ qa.game }}</h5>
+                            <span class="badge" style="background: rgba(255,255,255,0.1);">#{{ qa.id }}</span>
+                        </div>
+                        
+                        <div class="preview-box">
+                            <div class="text-truncate"><i class="fas fa-question-circle me-2"></i> {{ qa.ques1 }}</div>
+                            <div class="text-truncate"><i class="fas fa-question-circle me-2"></i> {{ qa.ques2 }}</div>
+                        </div>
+                    </div>
+
+                    {# ACTIONS #}
+                    <div class="d-flex gap-2">
+                        <a href="{{ path('app_questionnaire_agent_show', {'id': qa.id}) }}" class="btn btn-sm btn-outline-light" title="Voir">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ path('app_questionnaire_agent_edit', {'id': qa.id}) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
+                            <i class="fas fa-pen"></i>
+                        </a>
+                        
+                        <form method="post" action="{{ path('app_questionnaire_agent_delete', {'id': qa.id}) }}" onsubmit="return confirm('Supprimer ?');" style="margin:0;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ qa.id) }}">
+                            <button class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+</div>
+
+{# ✅ MODIFICATION 3: Script for Dynamic Search #}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const searchForm = document.getElementById('searchForm');
+        let timeout = null;
+
+        if (searchInput && searchForm) {
+            // Restore focus to input if a search is active (better UX after reload)
+            if (searchInput.value) {
+                searchInput.focus();
+                // Move cursor to the end of the text
+                const len = searchInput.value.length;
+                searchInput.setSelectionRange(len, len);
+            }
+
+            // Listen for typing events
+            searchInput.addEventListener('input', function() {
+                // Clear the previous timeout (debounce)
+                clearTimeout(timeout);
+                
+                // Submit form after 500ms of inactivity
+                timeout = setTimeout(function() {
+                    searchForm.submit();
+                }, 500); 
+            });
+        }
+    });
+</script>
+{% endblock %}

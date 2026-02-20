@@ -1,0 +1,385 @@
+{% extends 'basefront.html.twig' %}
+
+{% block title %}Mes Agents{% endblock %}
+
+{% block inline_styles %}
+<style>
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    box-shadow: var(--shadow);
+  }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 13px; }
+  .hr { height:1px; background: var(--border-light); margin: 16px 0; }
+
+  .list { display:flex; flex-direction:column; gap:14px; margin-top: 14px; }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  .agent {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 16px;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: rgba(255,255,255,0.03);
+    transition: var(--transition);
+  }
+  .agent:hover {
+    transform: translateY(-2px);
+    border-color: var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  /* Standard Pill */
+  .pill {
+    display:inline-flex;
+    align-items:center;
+    gap: 8px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-light);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-light);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* Status */
+  .status {
+    display:inline-flex;
+    align-items:center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid var(--border-light);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-light);
+  }
+  .status.active { color: var(--green); }
+  .status.inactive { color: var(--yellow); }
+  .status.banned { color: var(--red); }
+
+  /* Questionnaire complete badge */
+  .badge-complete {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(45, 255, 100, 0.1);
+    border: 1px solid rgba(45, 255, 100, 0.25);
+    color: #5eff8b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: default;
+  }
+
+  /* Buttons */
+  .btn-danger {
+    background: rgba(255,45,45,0.12);
+    border: 1px solid rgba(255,45,45,0.35);
+    color: #ff6b6b;
+  }
+  .btn-danger:hover {
+    background: rgba(255,45,45,0.18);
+    transform: translateY(-2px);
+  }
+  a.btn { text-decoration:none; }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    background: rgba(255,255,255,0.02);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-input {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-light);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    outline: none;
+    font-size: 14px;
+    width: 250px;
+  }
+  .search-input:focus { border-color: var(--primary); }
+
+  .btn-sort {
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: 0.2s;
+  }
+  .btn-sort:hover { background: rgba(255,255,255,0.1); color: white; }
+  .btn-sort.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+  /* Badge section wrapper */
+  #badgesSection {
+    display: none; /* hidden by default */
+    margin-bottom: 8px;
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="card">
+
+  {# Header #}
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div>
+      <h2 style="margin:0 0 6px;">Mes Profils d'Agent</h2>
+      <p class="muted" style="margin:0;">Un agent par jeu.</p>
+    </div>
+
+    <div class="row">
+      {# FIXED: Single button to toggle the badges view #}
+      <button type="button" id="toggleBadges" class="btn btn-secondary">
+        <i class="fa-solid fa-award"></i> View My Badges
+      </button>
+
+      <a class="btn btn-primary" href="{{ path('front_agent_new') }}">
+        <i class="fa-solid fa-plus"></i> Créer un Agent
+      </a>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  {# ================= BADGES (HIDDEN) ================= #}
+  <div id="badgesSection">
+
+    {% if badges is defined and badges|length > 0 %}
+
+      {% set earnedCount = 0 %}
+      {% for b in badges %}
+        {% if b.earned %}
+          {% set earnedCount = earnedCount + 1 %}
+        {% endif %}
+      {% endfor %}
+
+      <div class="row" style="justify-content:space-between; margin-bottom:10px;">
+        <div class="row">
+          <strong>My Badges</strong>
+          <span class="pill">{{ earnedCount }}/{{ badges|length }} Unlocked</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:10px;">
+        {% for b in badges %}
+          <div class="pill"
+               style="
+                 border-color:{% if b.earned %}rgba(46,204,113,.6){% else %}var(--border-light){% endif %};
+                 background: rgba(255,255,255,0.03);
+                 padding:8px 12px;">
+            <strong>{{ b.title }}</strong>
+            <span class="muted small">— {{ b.desc }}</span>
+            {% if b.earned %}
+              <span class="pill" style="padding:2px 8px; background:rgba(46,204,113,0.1); color:#2ecc71; border:none;">Unlocked</span>
+            {% else %}
+              <span class="pill" style="padding:2px 8px; border:none;">Locked</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="hr"></div>
+
+    {% else %}
+      <div class="pill">No badges available</div>
+      <div class="hr"></div>
+    {% endif %}
+
+  </div>
+  {# ================================================== #}
+
+  {# ============ TOOLBAR: Search & Sort ============ #}
+  <div class="toolbar">
+
+    <form id="searchForm" method="get" action="{{ path('front_agent_index') }}" style="display:flex; gap:8px;">
+      <input type="text" name="q" id="searchInput" class="search-input"
+             placeholder="Rechercher (Pseudo, Jeu...)" value="{{ q }}" autocomplete="off">
+
+      <input type="hidden" name="sort" value="{{ sort }}">
+      <input type="hidden" name="dir" value="{{ dir }}">
+
+      <button type="submit" class="btn btn-secondary" style="padding:6px 12px;">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+
+      {% if q %}
+        <a href="{{ path('front_agent_index') }}" class="btn btn-danger" style="padding:6px 12px;">
+          <i class="fa-solid fa-xmark"></i>
+        </a>
+      {% endif %}
+    </form>
+
+    <div style="flex-grow:1;"></div>
+
+    <span class="muted small" style="margin-right:8px;">Trier par:</span>
+
+    {% set nextDir = (dir == 'ASC') ? 'DESC' : 'ASC' %}
+
+    <a href="{{ path('front_agent_index', { q: q, sort: 'pseudo', dir: (sort == 'pseudo' ? nextDir : 'ASC') }) }}"
+       class="btn-sort {{ sort == 'pseudo' ? 'active' : '' }}">
+       Pseudo {% if sort == 'pseudo' %}<i class="fa-solid fa-arrow-{{ dir == 'ASC' ? 'down' : 'up' }}"></i>{% endif %}
+    </a>
+
+    <a href="{{ path('front_agent_index', { q: q, sort: 'game', dir: (sort == 'game' ? nextDir : 'ASC') }) }}"
+       class="btn-sort {{ sort == 'game' ? 'active' : '' }}">
+       Jeu {% if sort == 'game' %}<i class="fa-solid fa-arrow-{{ dir == 'ASC' ? 'down' : 'up' }}"></i>{% endif %}
+    </a>
+
+    <a href="{{ path('front_agent_index', { q: q, sort: 'rank', dir: (sort == 'rank' ? nextDir : 'ASC') }) }}"
+       class="btn-sort {{ sort == 'rank' ? 'active' : '' }}">
+       Rang {% if sort == 'rank' %}<i class="fa-solid fa-arrow-{{ dir == 'ASC' ? 'down' : 'up' }}"></i>{% endif %}
+    </a>
+
+  </div>
+  {# ================================================ #}
+
+  {# Flash messages #}
+  {% for label, messages in app.flashes %}
+    {% for message in messages %}
+      <div class="card" style="margin-bottom:12px; padding:14px; border-color:var(--border-light); background: rgba(255,255,255,0.03);">
+        <span class="muted">{{ message }}</span>
+      </div>
+    {% endfor %}
+  {% endfor %}
+
+  {% if agents is empty %}
+    <div class="card" style="text-align:center; padding:18px; background: rgba(255,255,255,0.03); border-color: var(--border-light);">
+      <p class="muted" style="margin:0;">
+        {% if q %}
+          Aucun résultat pour la recherche "{{ q }}".
+        {% else %}
+          Aucun agent pour le moment.
+        {% endif %}
+      </p>
+      {% if q %}
+        <br>
+        <a href="{{ path('front_agent_index') }}" class="btn btn-secondary">Tout afficher</a>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="list">
+      {% for agent in agents %}
+        <div class="agent">
+
+          {# LEFT #}
+          <div>
+            <div class="row" style="gap:8px; margin-bottom:6px;">
+              <strong style="font-size:16px;">{{ agent.pseudo }}</strong>
+
+              <span class="status {{ agent.status }}">{{ agent.status|capitalize }}</span>
+
+              <span class="pill">{{ agent.game }}</span>
+              <span class="pill">{{ agent.rank }}</span>
+
+              {% if agent.id in answeredIds %}
+                <span class="badge-complete" title="Vous avez répondu au questionnaire">
+                  <i class="fa-solid fa-check"></i> Questionnaire Validé
+                </span>
+              {% endif %}
+            </div>
+
+            <div class="small muted">
+              {% if agent.socialsLink %}
+                Lien :
+                <a class="btn btn-secondary" style="padding:4px 8px; font-size:11px;"
+                   href="{{ agent.socialsLink }}" target="_blank" rel="noreferrer">
+                  Ouvrir
+                </a>
+              {% else %}
+                Social : <span class="muted">—</span>
+              {% endif %}
+            </div>
+          </div>
+
+          {# RIGHT #}
+          <div class="row" style="justify-content:flex-end;">
+            <a class="btn btn-secondary" href="{{ path('front_agent_show', { id: agent.id }) }}">
+              <i class="fa-solid fa-eye"></i> Voir
+            </a>
+
+            {% if agent.id not in answeredIds %}
+              <a class="btn btn-danger" href="{{ path('front_agent_questionnaire_edit', { id: agent.id }) }}">
+                <i class="fa-solid fa-pen-to-square"></i> Remplir
+              </a>
+            {% endif %}
+
+            <a class="btn btn-secondary" href="{{ path('front_agent_edit', { id: agent.id }) }}">
+              <i class="fa-solid fa-pen"></i> Modifier
+            </a>
+
+            <form method="post"
+                  action="{{ path('front_agent_delete', { id: agent.id }) }}"
+                  style="display:inline"
+                  onsubmit="return confirm('Supprimer cet agent ?');">
+              <input type="hidden" name="_token" value="{{ csrf_token('delete_agent_' ~ agent.id) }}">
+              <button class="btn btn-danger" type="submit" title="Supprimer">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </form>
+          </div>
+
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Toggle badges
+    const toggleBtn = document.getElementById('toggleBadges');
+    const badgeSection = document.getElementById('badgesSection');
+
+    if (toggleBtn && badgeSection) {
+      toggleBtn.addEventListener('click', function() {
+        const isHidden = badgeSection.style.display === 'none' || badgeSection.style.display === '';
+        if (isHidden) {
+          badgeSection.style.display = 'block';
+          toggleBtn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Hide My Badges';
+        } else {
+          badgeSection.style.display = 'none';
+          toggleBtn.innerHTML = '<i class="fa-solid fa-award"></i> View My Badges';
+        }
+      });
+    }
+
+    // Dynamic search debounce
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+    let timeout = null;
+
+    if (searchInput && searchForm) {
+      searchInput.addEventListener('input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(function() {
+          searchForm.submit();
+        }, 500);
+      });
+    }
+  });
+</script>
+{% endblock %}

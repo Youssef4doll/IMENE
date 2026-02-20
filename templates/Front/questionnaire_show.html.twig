@@ -1,0 +1,255 @@
+{% extends 'basefront.html.twig' %}
+
+{% block title %}Answers - {{ agent.pseudo }}{% endblock %}
+
+{% block inline_styles %}
+<style>
+    /* COMPACT LAYOUT STYLES */
+    .page-wrap { max-width: 1200px; margin: 0 auto; }
+    
+    .compact-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+    }
+
+    /* HEADER ROW */
+    .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    /* GRID FOR QUESTIONS */
+    .qa-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); /* Slightly wider columns */
+        gap: 15px;
+    }
+
+    .qa-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-light);
+        border-radius: 10px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        transition: border-color 0.2s;
+    }
+    .qa-item:hover {
+        border-color: rgba(255,255,255,0.2);
+    }
+
+    /* Question & Answer Styling */
+    .qa-question {
+        color: var(--text-muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .qa-answer {
+        color: #fff;
+        font-size: 15px;
+        line-height: 1.5;
+        margin-bottom: 12px;
+        flex-grow: 1;
+        padding-left: 10px;
+        border-left: 2px solid rgba(255,255,255,0.2);
+    }
+
+    /* AI SUGGESTION BOX (Distinct Style) */
+    .ai-suggestion {
+        margin-top: auto; /* Pushes to bottom */
+        padding: 10px 12px;
+        background: rgba(77, 124, 255, 0.08); /* Blue-ish tint */
+        border: 1px dashed rgba(77, 124, 255, 0.4);
+        border-radius: 8px;
+    }
+    
+    .ai-label {
+        color: #4d7cff; /* AI Blue color */
+        font-size: 10px; 
+        font-weight: 800; 
+        text-transform: uppercase; 
+        margin-bottom: 6px;
+        display: flex; align-items: center; gap: 6px;
+        letter-spacing: 0.5px;
+    }
+    
+    .ai-text {
+        font-size: 13px;
+        color: #d0daff; /* Light blue-white text */
+        font-style: italic;
+        line-height: 1.4;
+    }
+
+    /* SCORE BADGE */
+    .score-badge {
+        background: rgba(0,0,0,0.3);
+        padding: 5px 15px;
+        border-radius: 8px;
+        text-align: center;
+        border: 1px solid var(--border-light);
+    }
+    
+    /* BUTTONS */
+    .btn-sm {
+        padding: 6px 14px;
+        font-size: 13px;
+        display: inline-flex; align-items: center; gap: 6px;
+        border-radius: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="page-wrap">
+
+  <section class="compact-card">
+    
+    {# --- HEADER: Title, Agent, Score, Buttons --- #}
+    <div class="header-row">
+        
+        {# LEFT: Info #}
+        <div style="flex-grow: 1;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                <h2 style="margin:0; font-size: 22px; font-weight:700;">Evaluation Report</h2>
+                
+                {% if aiResult is defined and aiResult.score is defined %}
+                    <span class="status active" style="font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid #4d7cff; color: #4d7cff; background: rgba(77, 124, 255, 0.1); font-weight:700;">
+                        <i class="fa-solid fa-check-circle"></i> AI PROCESSED
+                    </span>
+                {% else %}
+                    <span class="status inactive" style="font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid #555; color: #888; background: rgba(255,255,255,0.05);">
+                        NOT ANALYZED
+                    </span>
+                {% endif %}
+            </div>
+            <p class="muted" style="margin:0; font-size: 13px;">
+                Agent: <strong style="color:white;">{{ agent.pseudo }}</strong> <span style="color:#555;">|</span> Game: <span class="pill" style="padding:2px 8px; font-size:10px;">{{ agent.game }}</span>
+            </p>
+        </div>
+
+        {# MIDDLE: Score #}
+        {% if aiResult is defined and aiResult.score is defined %}
+            <div class="score-badge">
+                <div style="font-size:10px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Coach Score</div>
+                <div style="font-size:28px; font-weight:800; line-height:1; color: {{ aiResult.score > 75 ? '#2ecc71' : (aiResult.score > 45 ? '#f1c40f' : '#e74c3c') }};">
+                    {{ aiResult.score }}<span style="font-size:14px; color:var(--text-muted); font-weight:400;">/100</span>
+                </div>
+            </div>
+        {% endif %}
+
+        {# RIGHT: Actions #}
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ path('front_agent_index') }}" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </a>
+            
+            {% if aiResult is defined %}
+                <a href="{{ path('front_agent_questionnaire_edit', {'id': agent.id}) }}" class="btn btn-warning btn-sm">
+                   <i class="fa-solid fa-pen"></i> Edit Answers
+                </a>
+            {% else %}
+                <a href="{{ path('front_agent_questionnaire_edit', {'id': agent.id}) }}" class="btn btn-primary btn-sm">
+                   <i class="fa-solid fa-robot"></i> Run Analysis
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {# --- GLOBAL FEEDBACK --- #}
+    {% if aiResult is defined and aiResult.global_feedback is defined %}
+        <div style="background:rgba(77, 124, 255, 0.08); border-left:3px solid #4d7cff; padding:15px; border-radius:6px; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <i class="fa-solid fa-robot" style="color:#4d7cff; font-size: 16px;"></i>
+                <strong style="color:#fff; font-size: 13px; text-transform:uppercase; letter-spacing:0.5px;">Global Feedback</strong>
+            </div>
+            <p style="color:#ccc; margin:0; font-size:14px; line-height:1.5;">{{ aiResult.global_feedback }}</p>
+        </div>
+    {% endif %}
+
+    {# --- Q&A GRID --- #}
+    <div class="qa-grid">
+      {% set suggestions = aiResult.suggestions|default({}) %}
+
+      {# Q1 #}
+      <div class="qa-item">
+        <span class="qa-question">01. {{ questionnaire.ques1 }}</span>
+        <div class="qa-answer">{{ reponse.rep1 }}</div>
+        
+        {% if suggestions.rep1 is defined %}
+            <div class="ai-suggestion">
+                <div class="ai-label">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Coach AI Suggestion
+                </div>
+                <div class="ai-text">"{{ suggestions.rep1 }}"</div>
+            </div>
+        {% endif %}
+      </div>
+
+      {# Q2 #}
+      <div class="qa-item">
+        <span class="qa-question">02. {{ questionnaire.ques2 }}</span>
+        <div class="qa-answer">{{ reponse.rep2 }}</div>
+        
+        {% if suggestions.rep2 is defined %}
+            <div class="ai-suggestion">
+                <div class="ai-label">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Coach AI Suggestion
+                </div>
+                <div class="ai-text">"{{ suggestions.rep2 }}"</div>
+            </div>
+        {% endif %}
+      </div>
+
+      {# Q3 #}
+      {% if reponse.rep3 %}
+        <div class="qa-item">
+          <span class="qa-question">03. {{ questionnaire.ques3 }}</span>
+          <div class="qa-answer">{{ reponse.rep3 }}</div>
+          
+          {% if suggestions.rep3 is defined %}
+            <div class="ai-suggestion">
+                <div class="ai-label">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Coach AI Suggestion
+                </div>
+                <div class="ai-text">"{{ suggestions.rep3 }}"</div>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# Q4 #}
+      {% if reponse.rep4 %}
+        <div class="qa-item">
+          <span class="qa-question">04. {{ questionnaire.ques4 }}</span>
+          <div class="qa-answer">{{ reponse.rep4 }}</div>
+          
+          {% if suggestions.rep4 is defined %}
+            <div class="ai-suggestion">
+                <div class="ai-label">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Coach AI Suggestion
+                </div>
+                <div class="ai-text">"{{ suggestions.rep4 }}"</div>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+  </section>
+
+</div>
+{% endblock %}

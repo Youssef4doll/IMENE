@@ -1,0 +1,148 @@
+{# templates/front/agent_form.html.twig #}
+{% extends 'basefront.html.twig' %}
+
+{% block title %}Créer un Profil Agent{% endblock %}
+
+{% block inline_styles %}
+<style>
+  .card{
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    box-shadow: var(--shadow);
+  }
+  .muted{ color: var(--text-muted); }
+  .small{ font-size: 13px; }
+  .hr{ height:1px; background: var(--border-light); margin: 16px 0; }
+
+  .row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .grid{ display:grid; gap:12px; }
+
+  a.btn{ text-decoration: none; }
+
+  form label{
+    display:block;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-light);
+    margin-bottom: 6px;
+  }
+
+  form input,
+  form select,
+  form textarea{
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-main);
+    transition: var(--transition);
+    outline: none;
+  }
+
+  form input:focus,
+  form select:focus,
+  form textarea:focus{
+    border-color: var(--red);
+    box-shadow: 0 0 0 2px rgba(255,45,45,0.2);
+  }
+
+  /* ✅ FIX: Force Dropdown Options to be Dark */
+  form select option {
+    background-color: #1a1a1a; /* Dark background */
+    color: white; /* Light text */
+  }
+
+  section.card{
+    max-width: 820px;
+    margin: 0 auto;
+  }
+  
+  form select{
+    color-scheme: dark; /* Helps on modern browsers */
+    background-color: rgba(255,255,255,0.04);
+    color: var(--text-main);
+  }
+
+  /* Errors styling */
+  .grid ul,
+  .grid .invalid-feedback {
+    margin: 5px 0 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(255,45,45,0.10);
+    border: 1px solid rgba(255,45,45,0.30);
+    color: #ff6b6b;
+    font-size: 12px;
+    font-weight: 600;
+    list-style: none;
+  }
+  .grid li { margin: 0; }
+
+</style>
+{% endblock %}
+
+{% block body %}
+
+<section class="card">
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div>
+      <h2 style="margin:0 0 6px;">Créer un Profil Agent</h2>
+      <p class="muted" style="margin:0;">
+        Choisissez un jeu et configurez votre profil.
+      </p>
+    </div>
+
+    <a class="btn btn-secondary" href="{{ path('front_agent_index') }}">
+      <i class="fa-solid fa-arrow-left"></i> Retour
+    </a>
+  </div>
+
+  <div class="hr"></div>
+
+  {% for label, messages in app.flashes %}
+    {% for message in messages %}
+      <div class="card" style="margin-bottom:12px; background: rgba(255,255,255,0.03); border-color: var(--border-light);">
+        <span class="muted">{{ message }}</span>
+      </div>
+    {% endfor %}
+  {% endfor %}
+
+  <div class="card" style="background: rgba(255,204,102,0.06); border-color: rgba(255,204,102,0.25);">
+    <p class="small muted" style="margin:0; line-height:1.6;">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      Après la création, vous ne pourrez modifier que :
+      <b>pseudo</b>, <b>rang</b>, <b>statut</b> et <b>lien social</b>.
+    </p>
+  </div>
+
+  <div class="hr"></div>
+
+  {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+    <div class="grid">
+      {# Render the fields #}
+      {% for field in form %}
+          {{ form_row(field) }}
+      {% endfor %}
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row" style="justify-content:flex-end; gap:10px;">
+      <button class="btn btn-primary" type="submit">
+        <i class="fa-solid fa-plus"></i> Créer
+      </button>
+
+      <a class="btn btn-secondary" href="{{ path('front_agent_index') }}">
+        Annuler
+      </a>
+    </div>
+
+  {{ form_end(form) }}
+
+</section>
+
+{% endblock %}

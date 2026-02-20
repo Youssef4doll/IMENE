@@ -1,0 +1,444 @@
+{% extends 'basefront.html.twig' %}
+
+{% block title %}My Holo Badges{% endblock %}
+
+{% block inline_styles %}
+<style>
+    :root {
+        --card-aspect: 0.718;
+        --card-edge: #1a1a1a;
+        --bg-card: #2d2d2d;
+    }
+
+    .badge-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 40px;
+        padding: 40px 20px;
+        perspective: 2000px;
+    }
+
+    .holo-card {
+        --mx: 50%; --my: 50%;
+        --s: 1; --o: 0;
+        --tx: 0px; --ty: 0px; --tz: 0px;
+        --rx: 0deg; --ry: 0deg;
+        --flip: 0deg;
+        --posx: 50%; --posy: 50%; --hyp: 0;
+
+        width: 100%;
+        aspect-ratio: var(--card-aspect);
+        position: relative;
+        z-index: 1;
+        will-change: transform, visibility;
+        transform-style: preserve-3d;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .holo-card.interacting { z-index: 50; }
+    .holo-card.active { z-index: 80; }
+
+    .card__translater,
+    .card__rotator {
+        display: grid;
+        perspective: 600px;
+        transform-origin: center;
+        width: 100%;
+        height: 100%;
+        will-change: transform;
+    }
+
+    .card__translater {
+        position: relative;
+        transform: translate3d(var(--tx), var(--ty), 0) scale(var(--s));
+        transition: transform 0.2s ease;
+    }
+
+    .card__rotator {
+        --glow: #69d1e9;
+
+        transform:
+            translateZ(var(--tz))
+            rotateY(calc(var(--rx) + var(--flip)))
+            rotateX(var(--ry));
+
+        transform-style: preserve-3d;
+        box-shadow: 0px 10px 20px -5px black;
+        border-radius: 15px;
+        transition: box-shadow 0.35s ease, transform 0.2s ease, filter 0.2s ease;
+        background: var(--card-edge);
+        outline: none;
+        position: relative;
+    }
+
+    .holo-card.active .card__rotator {
+        box-shadow:
+            0 0 10px 0px var(--glow),
+            0 0 25px 0px var(--glow),
+            0px 18px 30px -10px black;
+    }
+
+    .card__rotator > * {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        grid-area: 1/1;
+        border-radius: 15px;
+        transform-style: preserve-3d;
+        position: absolute;
+        top: 0; left: 0;
+    }
+
+    /* ✅ FRONT/BACK now support background images */
+    .card__front,
+    .card__back {
+        backface-visibility: hidden;
+        background-color: var(--bg-card);
+        background-size: cover;
+        background-position: center;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+    }
+
+    .card__front { justify-content: flex-end; }
+    .card__back {
+        transform: rotateY(180deg);
+        justify-content: center;
+        gap: 18px;
+        padding: 22px;
+        text-align: center;
+    }
+
+    /* ✅ overlay for readability on background image */
+    .bg-overlay {
+        position:absolute;
+        inset:0;
+        background: linear-gradient(to top, rgba(0,0,0,0.88), rgba(0,0,0,0.10));
+        z-index: 1;
+        pointer-events:none;
+    }
+
+    .card__content {
+        padding: 20px;
+        width: 100%;
+        text-align: center;
+        z-index: 10;
+        transform: translateZ(20px);
+        position: relative;
+    }
+
+    .card__back .card__content {
+        background: rgba(0,0,0,0.65);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 14px;
+        width: 92%;
+        max-width: 92%;
+    }
+
+    .card-title {
+        color: #fff;
+        font-size: 1.5rem;
+        font-weight: 800;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        margin-bottom: 5px;
+    }
+
+    .card-desc { color: #ddd; font-size: 0.9rem; }
+
+    .card-instructions {
+        list-style: none;
+        padding: 0;
+        margin: 12px 0 0;
+        color: #ddd;
+        font-size: 0.95rem;
+        line-height: 1.45;
+        text-align: left;
+    }
+    .card-instructions li { margin: 8px 0; }
+    .card-instructions li::before { content: "✨ "; }
+
+    .status-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: #000;
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: bold;
+        transform: translateZ(30px);
+        border: 1px solid rgba(255,255,255,0.3);
+        z-index: 20;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .card__shine {
+        mix-blend-mode: color-dodge;
+        pointer-events: none;
+        z-index: 4;
+        opacity: var(--o);
+        transition: opacity 0.3s;
+    }
+
+    .card__glare {
+        background-image: radial-gradient(
+            farthest-corner circle at var(--mx) var(--my),
+            rgba(255, 255, 255, 0.8) 10%,
+            rgba(255, 255, 255, 0.65) 20%,
+            rgba(0, 0, 0, 0.5) 90%
+        );
+        mix-blend-mode: overlay;
+        opacity: var(--o);
+        z-index: 5;
+        pointer-events: none;
+    }
+
+    .holo-card[data-rarity="galaxy"] .card__shine {
+        --space: 80px;
+        clip-path: inset(2px);
+        background-image:
+            url("https://res.cloudinary.com/simey/image/upload/Dev/PokemonCards/galaxy.png"),
+            repeating-linear-gradient(
+                82deg,
+                rgb(218, 56, 50) calc(var(--space) * 1),
+                rgb(219, 204, 86) calc(var(--space) * 2),
+                rgb(121, 199, 58) calc(var(--space) * 3),
+                rgb(58, 192, 183) calc(var(--space) * 4),
+                rgb(71, 98, 207) calc(var(--space) * 5),
+                rgb(170, 69, 209) calc(var(--space) * 6),
+                rgb(218, 56, 50) calc(var(--space) * 10)
+            );
+        background-blend-mode: color-dodge, normal;
+        background-size: cover, 600% 1200%;
+        background-position: center,
+            calc(((50% - var(--posx)) * 2.5) + 50%)
+            calc(((50% - var(--posy)) * 2.5) + 50%);
+        filter: brightness(0.75) contrast(1.2) saturate(1.5);
+    }
+
+    .holo-card[data-rarity="galaxy"].active .card__rotator {
+        filter: brightness(1.05) saturate(1.05);
+    }
+
+    /* Locked */
+    .holo-card.locked { filter: grayscale(1) brightness(0.6); }
+    .holo-card.locked .card__shine,
+    .holo-card.locked .card__glare { display: none; }
+
+    /* Fallback icons */
+    .badge-icon-lg {
+        font-size: 60px;
+        color: rgba(255,255,255,0.22);
+        margin-bottom: auto;
+        margin-top: 40px;
+        transform: translateZ(10px);
+        z-index: 6;
+    }
+    .badge-icon-back {
+        font-size: 54px;
+        color: rgba(255,255,255,0.85);
+        text-shadow: 0 0 18px rgba(105, 209, 233, 0.9);
+        transform: translateZ(10px);
+        z-index: 6;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<section style="padding: 20px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="margin:0;">🏆 Collection</h2>
+        <a class="btn btn-secondary" href="{{ path('front_agent_index') }}">
+            <i class="fa-solid fa-arrow-left"></i> Back to Agents
+        </a>
+    </div>
+
+    <div class="badge-grid">
+        {% if badges is defined %}
+            {% for b in badges %}
+                {% set rarity = b.earned ? 'galaxy' : 'common' %}
+                {% set lockedClass = b.earned ? '' : 'locked' %}
+
+                {# Resolve background URLs: accept http OR local asset path #}
+                {% set frontBg = b.frontImage|default(null) %}
+                {% set backBg  = b.backImage|default(null) %}
+
+                {% set frontBgUrl = null %}
+                {% if frontBg %}
+                    {% set frontBgUrl = frontBg starts with 'http' ? frontBg : asset(frontBg) %}
+                {% endif %}
+
+                {% set backBgUrl = null %}
+                {% if backBg %}
+                    {% set backBgUrl = backBg starts with 'http' ? backBg : asset(backBg) %}
+                {% endif %}
+
+                <div class="holo-card {{ lockedClass }}" data-rarity="{{ rarity }}" tabindex="0">
+                    <div class="card__translater">
+                        <div class="card__rotator">
+
+                            <div class="card__shine"></div>
+                            <div class="card__glare"></div>
+
+                            {# FRONT (background image) #}
+                            <div class="card__front"
+                                 {% if frontBgUrl %}style="background-image:url('{{ frontBgUrl }}');"{% endif %}>
+                                <div class="status-badge">{{ b.earned ? 'UNLOCKED' : 'LOCKED' }}</div>
+
+                                <div class="bg-overlay"></div>
+
+                                {% if not frontBgUrl %}
+                                    <i class="fa-solid fa-medal badge-icon-lg"></i>
+                                {% endif %}
+
+                                <div class="card__content">
+                                    <div class="card-title">{{ b.title }}</div>
+                                    <div class="card-desc">{{ b.desc }}</div>
+                                </div>
+                            </div>
+
+                            {# BACK (background image) #}
+                            <div class="card__back"
+                                 {% if backBgUrl %}style="background-image:url('{{ backBgUrl }}');"{% endif %}>
+                                <div class="status-badge">HOW TO</div>
+
+                                <div class="bg-overlay"></div>
+
+                                {% if not backBgUrl %}
+                                    <i class="fa-solid fa-circle-info badge-icon-back"></i>
+                                {% endif %}
+
+                                <div class="card__content">
+                                    <div class="card-title">Instructions</div>
+                                    <div class="card-desc">Interact with the card ✨</div>
+
+                                    <ul class="card-instructions">
+                                        <li>Move your mouse to tilt + see the holo shine.</li>
+                                        <li>Click to flip the card and bring it closer.</li>
+                                        <li>Click again to go back to your badge.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            {% endfor %}
+        {% else %}
+            <p class="muted">No badges configuration found.</p>
+        {% endif %}
+    </div>
+
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const cards = document.querySelectorAll(".holo-card");
+
+    cards.forEach((card) => {
+        let flipped = false;
+
+        const setActive = (on) => card.classList.toggle("active", on);
+        const setInteracting = (on) => card.classList.toggle("interacting", on);
+
+        card.addEventListener("mouseenter", () => {
+            setInteracting(true);
+            setActive(true);
+
+            gsap.to(card, {
+                "--s": "1.06",
+                "--tz": "40px",
+                duration: 0.25,
+                ease: "power2.out",
+                overwrite: "auto"
+            });
+        });
+
+        card.addEventListener("mousemove", (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const xPct = x / rect.width;
+            const yPct = y / rect.height;
+
+            const rX = (0.5 - xPct) * 50;
+            const rY = (0.5 - yPct) * -50;
+
+            const dx = xPct - 0.5;
+            const dy = yPct - 0.5;
+            const hyp = Math.sqrt(dx * dx + dy * dy) * 2;
+
+            card.style.setProperty("--mx", `${xPct * 100}%`);
+            card.style.setProperty("--my", `${yPct * 100}%`);
+            card.style.setProperty("--posx", `${xPct * 100}%`);
+            card.style.setProperty("--posy", `${yPct * 100}%`);
+            card.style.setProperty("--hyp", hyp);
+            card.style.setProperty("--o", "1");
+
+            const centerBoost = Math.max(0, 1 - hyp);
+            const baseZ = 35 + centerBoost * 25;
+            const clickBoost = flipped ? 70 : 0;
+            const z = baseZ + clickBoost;
+
+            gsap.to(card, {
+                "--rx": `${rX}deg`,
+                "--ry": `${rY}deg`,
+                "--tx": `${(xPct - 0.5) * 15}px`,
+                "--ty": `${(yPct - 0.5) * 15}px`,
+                "--tz": `${z}px`,
+                duration: 0.25,
+                ease: "power2.out",
+                overwrite: "auto"
+            });
+        });
+
+        card.addEventListener("click", () => {
+            flipped = !flipped;
+            setActive(true);
+            setInteracting(true);
+
+            gsap.to(card, {
+                "--s": flipped ? "1.12" : "1.06",
+                "--tz": flipped ? "125px" : "50px",
+                "--flip": flipped ? "180deg" : "0deg",
+                duration: 0.85,
+                ease: "power3.inOut",
+                overwrite: "auto"
+            });
+        });
+
+        card.addEventListener("mouseleave", () => {
+            setActive(false);
+            setInteracting(false);
+
+            card.style.setProperty("--o", "0");
+            flipped = false;
+
+            gsap.to(card, {
+                "--rx": "0deg",
+                "--ry": "0deg",
+                "--tx": "0px",
+                "--ty": "0px",
+                "--tz": "0px",
+                "--flip": "0deg",
+                "--s": "1",
+                duration: 0.8,
+                ease: "elastic.out(1, 0.5)",
+                overwrite: "auto"
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,199 @@
+{# templates/front/agent/index.html.twig #}
+{% extends 'basefront.html.twig' %}
+
+{% block title %}Mes Agents{% endblock %}
+
+{% block inline_styles %}
+<style>
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    box-shadow: var(--shadow);
+  }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 13px; }
+  .hr { height:1px; background: var(--border-light); margin: 16px 0; }
+
+  .list { display:flex; flex-direction:column; gap:14px; margin-top: 14px; }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  .agent {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 16px;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: rgba(255,255,255,0.03);
+    transition: var(--transition);
+  }
+  .agent:hover {
+    transform: translateY(-2px);
+    border-color: var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  /* Standard Pill */
+  .pill {
+    display:inline-flex;
+    align-items:center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-light);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-light);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* Status Dot (Online/Offline) */
+  .status {
+    display:inline-flex;
+    align-items:center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid var(--border-light);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-light);
+  }
+  .status.active { color: var(--green); }
+  .status.inactive { color: var(--yellow); }
+  .status.banned { color: var(--red); }
+
+  /* ✅ PRETTY BADGE: "Profil Complété" (Appears on Left) */
+  .badge-complete {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(45, 255, 100, 0.1);
+    border: 1px solid rgba(45, 255, 100, 0.25);
+    color: #5eff8b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: default;
+  }
+
+  /* Action Button (Red) - Only appears if NOT done */
+  .btn-danger {
+    background: rgba(255,45,45,0.12);
+    border: 1px solid rgba(255,45,45,0.35);
+    color: #ff6b6b;
+  }
+  .btn-danger:hover {
+    background: rgba(255,45,45,0.18);
+    transform: translateY(-2px);
+  }
+
+  a.btn { text-decoration:none; }
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="card">
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div>
+      <h2 style="margin:0 0 6px;">Mes Profils d'Agent</h2>
+      <p class="muted" style="margin:0;">Un agent par jeu.</p>
+    </div>
+
+    <a class="btn btn-primary" href="{{ path('front_agent_new') }}">
+      <i class="fa-solid fa-plus"></i> Créer un Agent
+    </a>
+  </div>
+
+  <div class="hr"></div>
+
+  {# Flash messages #}
+  {% for label, messages in app.flashes %}
+    {% for message in messages %}
+      <div class="card" style="margin-bottom:12px; padding:14px; border-color:var(--border-light); background: rgba(255,255,255,0.03);">
+        <span class="muted">{{ message }}</span>
+      </div>
+    {% endfor %}
+  {% endfor %}
+
+  {% if agents is empty %}
+    <div class="card" style="text-align:center; padding:18px; background: rgba(255,255,255,0.03); border-color: var(--border-light);">
+      <p class="muted" style="margin:0;">Aucun agent pour le moment.</p>
+    </div>
+  {% else %}
+    <div class="list">
+      {% for agent in agents %}
+        <div class="agent">
+          
+          {# ========== LEFT SIDE: INFO & STATUS ========== #}
+          <div>
+            <div class="row" style="gap:8px; margin-bottom:6px;">
+              <strong style="font-size:16px;">{{ agent.pseudo }}</strong>
+              
+              {# Status: Online/Offline #}
+              <span class="status {{ agent.status }}">{{ agent.status|capitalize }}</span>
+              
+              {# Game & Rank #}
+              <span class="pill">{{ agent.game }}</span>
+              <span class="pill">{{ agent.rank }}</span>
+
+              {# ✅ BADGE LOGIC: If Completed, show badge here #}
+              {% if agent.id in answeredIds %}
+                <span class="badge-complete" title="Vous avez répondu au questionnaire">
+                    <i class="fa-solid fa-check"></i> Profil Complété
+                </span>
+              {% endif %}
+            </div>
+
+            <div class="small muted">
+              {% if agent.socialsLink %}
+                Lien :
+                <a class="btn btn-secondary" style="padding:4px 8px; font-size:11px;"
+                   href="{{ agent.socialsLink }}" target="_blank" rel="noreferrer">
+                  Ouvrir
+                </a>
+              {% else %}
+                Social : <span class="muted">—</span>
+              {% endif %}
+            </div>
+          </div>
+
+          {# ========== RIGHT SIDE: ACTION BUTTONS ========== #}
+          <div class="row" style="justify-content:flex-end;">
+            
+            <a class="btn btn-secondary" href="{{ path('front_agent_show', { id: agent.id }) }}">
+              <i class="fa-solid fa-eye"></i> Voir
+            </a>
+
+            {# ✅ BUTTON LOGIC: If NOT answered, show "Remplir" button here #}
+            {% if agent.id not in answeredIds %}
+                <a class="btn btn-danger" href="{{ path('front_agent_questionnaire_edit', { id: agent.id }) }}">
+                    <i class="fa-solid fa-pen-to-square"></i> Remplir
+                </a>
+            {% endif %}
+
+            <a class="btn btn-secondary" href="{{ path('front_agent_edit', { id: agent.id }) }}">
+              <i class="fa-solid fa-pen"></i> Modifier
+            </a>
+
+            <form method="post"
+                  action="{{ path('front_agent_delete', { id: agent.id }) }}"
+                  style="display:inline"
+                  onsubmit="return confirm('Supprimer cet agent ?');">
+              <input type="hidden" name="_token" value="{{ csrf_token('delete_agent_' ~ agent.id) }}">
+              <button class="btn btn-danger" type="submit" title="Supprimer">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
