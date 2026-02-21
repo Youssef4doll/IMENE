@@ -125,6 +125,7 @@ class AgentProfileController extends AbstractController
             
             if ($questionnaire) {
                 // RUN AI NOW
+                $userLanguage = $request->getSession()->get('_locale', 'fr');
                 $aiResult = $aiService->evaluate($questionnaire, $reponse, $request->getLocale());
                 
                 // --- NEW: DISCORD SCOUT ALERT ---
